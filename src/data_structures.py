@@ -115,30 +115,81 @@ class AVLNode:
         self.height = 1
 
 class AVLTree:
+    """AVL-дерево как множество уникальных ключей.
+
+    Методы работают с корнем: root = tree.insert(root, key).
+    Повторная вставка существующего ключа ничего не меняет.
+    """
+
     def insert(self, root, key):
         if not root:
             return AVLNode(key)
-        elif key < root.key:
+        if key < root.key:
             root.left = self.insert(root.left, key)
-        else:
+        elif key > root.key:
             root.right = self.insert(root.right, key)
+        else:
+            # Дубликат: игнорируем, иначе ломается балансировка
+            return root
 
+        return self._rebalance(root)
+
+    def delete(self, root, key):
+        if not root:
+            return None
+        if key < root.key:
+            root.left = self.delete(root.left, key)
+        elif key > root.key:
+            root.right = self.delete(root.right, key)
+        else:
+            if not root.left:
+                return root.right
+            if not root.right:
+                return root.left
+            # Два потомка: заменяем ключ минимальным из правого поддерева
+            successor = self._min_node(root.right)
+            root.key = successor.key
+            root.right = self.delete(root.right, successor.key)
+
+        return self._rebalance(root)
+
+    def search(self, root, key):
+        """Возвращает узел с ключом или None."""
+        while root:
+            if key < root.key:
+                root = root.left
+            elif key > root.key:
+                root = root.right
+            else:
+                return root
+        return None
+
+    def inorder(self, root):
+        """Ключи в порядке возрастания."""
+        if not root:
+            return []
+        return self.inorder(root.left) + [root.key] + self.inorder(root.right)
+
+    def _min_node(self, root):
+        while root.left:
+            root = root.left
+        return root
+
+    def _rebalance(self, root):
         root.height = 1 + max(self._get_height(root.left), self._get_height(root.right))
         balance = self._get_balance(root)
 
-        # Левый левый
-        if balance > 1 and key < root.left.key:
+        if balance > 1:
+            # Левый правый
+            if self._get_balance(root.left) < 0:
+                root.left = self._left_rotate(root.left)
+            # Левый левый
             return self._right_rotate(root)
-        # Правый правый
-        if balance < -1 and key > root.right.key:
-            return self._left_rotate(root)
-        # Левый правый
-        if balance > 1 and key > root.left.key:
-            root.left = self._left_rotate(root.left)
-            return self._right_rotate(root)
-        # Правый левый
-        if balance < -1 and key < root.right.key:
-            root.right = self._right_rotate(root.right)
+        if balance < -1:
+            # Правый левый
+            if self._get_balance(root.right) > 0:
+                root.right = self._right_rotate(root.right)
+            # Правый правый
             return self._left_rotate(root)
 
         return root
@@ -170,4 +221,3 @@ class AVLTree:
         if not root:
             return 0
         return self._get_height(root.left) - self._get_height(root.right)
-    
